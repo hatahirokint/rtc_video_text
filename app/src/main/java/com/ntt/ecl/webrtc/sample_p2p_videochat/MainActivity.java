@@ -74,8 +74,8 @@ public class MainActivity extends Activity implements Runnable{
 	//
 	// Set your APIkey and Domain
 	//
-	private static final String API_KEY = "3eab7117-c2ca-49ef-8c73-85d6d9439b47";
-	private static final String DOMAIN = "hiroki.hatahata";
+	private static final String API_KEY = "";
+	private static final String DOMAIN = "";
 
 
 	private Peer			_peer;
