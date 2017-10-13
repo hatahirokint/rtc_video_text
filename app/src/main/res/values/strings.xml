@@ -1,4 +1,4 @@
 <resources>
-    <string name="app_name">Sample-P2P-VideoChat</string>
-    <string name="title_activity_video_chat">VideoChat</string>
+    <string name="app_name">Rtc_Video_Text</string>
+    <string name="title_activity_video_chat">RtcVideoText</string>
 </resources>

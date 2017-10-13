@@ -1,10 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string-array name="datatypes">
-        <item>"Hello WebRTC. (String)</item>
-        <item>"3.14 (Double)"</item>
-        <item>"[1,2,3](Array)"</item>
-        <item>"{'one':1,'two':2} (Map)"</item>
-        <item>"send Image (Binary)"</item>
+        <item>"LED1 ON"</item>
+        <item>"LED1 OFF"</item>
+        <item>"LED2 ON"</item>
+        <item>"LED2 OFF"</item>
+        <item>"LED3 ON"</item>
+        <item>"LED3 OFF"</item>
+        <item>"LED4 ON"</item>
+        <item>"LED4 OFF"</item>
+
     </string-array>
 </resources>
