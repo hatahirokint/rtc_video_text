@@ -74,8 +74,8 @@ public class MainActivity extends Activity implements Runnable{
 	//
 	// Set your APIkey and Domain
 	//
-	private static final String API_KEY = "3eab7117-c2ca-49ef-8c73-85d6d9439b47";
-	private static final String DOMAIN = "hiroki.hatahata";
+	private static final String API_KEY = "APIKEY";
+	private static final String DOMAIN = "DOMAIN";
 
 
 	private Peer			_peer;
@@ -138,7 +138,7 @@ public class MainActivity extends Activity implements Runnable{
 			}
 		});
 
-		// CALL (Incoming call)データ通信でかかってきたとき
+		// CALL (Data)
 		_peer.on(Peer.PeerEventEnum.CONNECTION, new OnCallback() {
 			@Override
 			public void onCallback(Object object) {
@@ -151,7 +151,7 @@ public class MainActivity extends Activity implements Runnable{
 			}
 		});
 
-		// CALL (Incoming call)メディア通信でかかってきたとき
+		// CALL (Media)
 		_peer.on(Peer.PeerEventEnum.CALL, new OnCallback() {
 			@Override
 			public void onCallback(Object object) {
@@ -813,7 +813,8 @@ public class MainActivity extends Activity implements Runnable{
 		}
 
 		if(bResult) {
-			appendLog("You:" + strMsg);
+
+            appendLog("You:" + strMsg);
 		}
 
 	}
