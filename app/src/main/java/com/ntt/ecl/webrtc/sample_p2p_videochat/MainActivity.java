@@ -74,6 +74,7 @@ public class MainActivity extends Activity implements Runnable{
 	//
 	// Set your APIkey and Domain
 	//
+
 	private static final String API_KEY = "APIKEY";
 	private static final String DOMAIN = "DOMAIN";
 
