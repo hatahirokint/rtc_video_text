@@ -74,8 +74,8 @@ public class MainActivity extends Activity implements Runnable{
 	//
 	// Set your APIkey and Domain
 	//
-	private static final String API_KEY = "";
-	private static final String DOMAIN = "";
+	private static final String API_KEY = "3eab7117-c2ca-49ef-8c73-85d6d9439b47";
+	private static final String DOMAIN = "hiroki.hatahata";
 
 
 	private Peer			_peer;
@@ -99,6 +99,7 @@ public class MainActivity extends Activity implements Runnable{
 		Window wnd = getWindow();
 		wnd.addFlags(Window.FEATURE_NO_TITLE);
 		setContentView(R.layout.activity_main);
+
 
 		_tvMessage = (TextView) findViewById(R.id.tvMessage);//
 		_handler = new Handler(Looper.getMainLooper());
@@ -134,7 +135,6 @@ public class MainActivity extends Activity implements Runnable{
 					// Get a local MediaStream & show it
 					startLocalStream();
 				}
-
 			}
 		});
 
@@ -145,7 +145,6 @@ public class MainActivity extends Activity implements Runnable{
 				if (!(object instanceof DataConnection)){
 					return;
 				}
-
 				_dataConnection = (DataConnection)object;
 				setDataCallbacks();
 				updateActionButtonTitle();
@@ -160,11 +159,9 @@ public class MainActivity extends Activity implements Runnable{
 				if (!(object instanceof MediaConnection)) {
 					return;
 				}
-
 				_mediaConnection = (MediaConnection) object;
 				setMediaCallbacks();
 				_mediaConnection.answer(_localStream);
-
 				_bConnected = true;
 				updateActionButtonTitle();
 			}
@@ -254,6 +251,64 @@ public class MainActivity extends Activity implements Runnable{
 				}
 			}
 		});
+
+		Button btnGo = (Button) findViewById(R.id.btnGo);
+		btnGo.setEnabled(true);
+		btnGo.setOnClickListener(new View.OnClickListener(){
+			@Override
+			public void onClick(View v){
+				if (_bConnected) {
+					v.setEnabled(false);
+
+					sendData(0);
+					v.setEnabled(true);
+				}
+			}
+		});
+
+		Button btnBack = (Button) findViewById(R.id.btnBack);
+		btnBack.setEnabled(true);
+		btnBack.setOnClickListener(new View.OnClickListener(){
+			@Override
+			public void onClick(View v){
+				if (_bConnected) {
+					v.setEnabled(false);
+
+					sendData(1);
+					v.setEnabled(true);
+				}
+			}
+		});
+
+		Button btnLeft = (Button) findViewById(R.id.btnLeft);
+		btnLeft.setEnabled(true);
+		btnLeft.setOnClickListener(new View.OnClickListener(){
+			@Override
+			public void onClick(View v){
+				if (_bConnected) {
+					v.setEnabled(false);
+
+					sendData(2);
+					v.setEnabled(true);
+				}
+			}
+		});
+
+
+		Button btnRight = (Button) findViewById(R.id.btnRight);
+		btnRight.setEnabled(true);
+		btnRight.setOnClickListener(new View.OnClickListener(){
+			@Override
+			public void onClick(View v){
+				if (_bConnected) {
+					v.setEnabled(false);
+
+					sendData(3);
+					v.setEnabled(true);
+				}
+			}
+		});
+
 	}
 
 	//カメラへのPermissionの処理
@@ -751,32 +806,6 @@ public class MainActivity extends Activity implements Runnable{
                 break;
             }
 
-            case 4: {
-                String strData = "52";
-                bResult = _dataConnection.send(strData);
-                strMsg = strData;
-                break;
-            }
-
-            case 5: {
-                String strData = "53";
-                bResult = _dataConnection.send(strData);
-                strMsg = strData;
-                break;
-            }
-            case 6: {
-                String strData = "54";
-                bResult = _dataConnection.send(strData);
-                strMsg = strData;
-                break;
-            }
-
-            case 7: {
-                String strData = "55";
-                bResult = _dataConnection.send(strData);
-                strMsg = strData;
-                break;
-            }
 
             default:{
                 break;
