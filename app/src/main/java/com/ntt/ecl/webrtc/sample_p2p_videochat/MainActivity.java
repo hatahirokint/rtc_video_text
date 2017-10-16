@@ -5,8 +5,6 @@ import android.app.Activity;
 import android.app.FragmentManager;
 import android.content.Context;
 import android.content.pm.PackageManager;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.media.AudioManager;
 import android.os.Bundle;
 import android.os.Handler;
@@ -18,21 +16,21 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Button;
-import android.widget.ImageView;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import org.json.JSONArray;
-import org.json.JSONObject;
 
-import java.io.BufferedInputStream;
-import java.io.ByteArrayOutputStream;
+import java.io.BufferedReader;
 import java.io.IOException;
-import java.nio.ByteBuffer;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.net.InetSocketAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.net.SocketException;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
 
 import io.skyway.Peer.Browser.Canvas;
 import io.skyway.Peer.Browser.MediaConstraints;
@@ -55,14 +53,31 @@ import io.skyway.Peer.PeerOption;
  */
 
 
-public class MainActivity extends Activity {
+public class MainActivity extends Activity implements Runnable{
 	private static final String TAG = MainActivity.class.getSimpleName();
+
+    //MicroBridgeの設定
+    private static int portNumber = 60200;
+    private ServerSocket mServerSocket;
+    private Socket mSock = null;
+
+    private boolean serverActive = false;
+
+    private Handler mHandler = new Handler();
+
+    private OutputStreamWriter transmitData = null;
+    private BufferedReader receivedData = null;
+
+   // private String strValue = null;
+
 
 	//
 	// Set your APIkey and Domain
 	//
-	private static final String API_KEY = "Your API_KEY";
-	private static final String DOMAIN = "Your DOMAIN";
+
+	private static final String API_KEY = "APIKEY";
+	private static final String DOMAIN = "DOMAIN";
+
 
 	private Peer			_peer;
 	private DataConnection _dataConnection;//
@@ -77,7 +92,7 @@ public class MainActivity extends Activity {
 	private Handler			_handler;
 	private TextView        _tvMessage;//
 
-	//自分のpeerIDを自分のスマホに表示
+
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 
@@ -85,6 +100,7 @@ public class MainActivity extends Activity {
 		Window wnd = getWindow();
 		wnd.addFlags(Window.FEATURE_NO_TITLE);
 		setContentView(R.layout.activity_main);
+
 
 		_tvMessage = (TextView) findViewById(R.id.tvMessage);//
 		_handler = new Handler(Looper.getMainLooper());
@@ -120,25 +136,23 @@ public class MainActivity extends Activity {
 					// Get a local MediaStream & show it
 					startLocalStream();
 				}
-
 			}
 		});
 
-		// CALL (Incoming call)データ通信でかかってきたとき
+		// CALL (Data)
 		_peer.on(Peer.PeerEventEnum.CONNECTION, new OnCallback() {
 			@Override
 			public void onCallback(Object object) {
 				if (!(object instanceof DataConnection)){
 					return;
 				}
-
 				_dataConnection = (DataConnection)object;
 				setDataCallbacks();
 				updateActionButtonTitle();
 			}
 		});
 
-		// CALL (Incoming call)メディア通信でかかってきたとき
+		// CALL (Media)
 		_peer.on(Peer.PeerEventEnum.CALL, new OnCallback() {
 			@Override
 			public void onCallback(Object object) {
@@ -146,11 +160,9 @@ public class MainActivity extends Activity {
 				if (!(object instanceof MediaConnection)) {
 					return;
 				}
-
 				_mediaConnection = (MediaConnection) object;
 				setMediaCallbacks();
 				_mediaConnection.answer(_localStream);
-
 				_bConnected = true;
 				updateActionButtonTitle();
 			}
@@ -240,6 +252,64 @@ public class MainActivity extends Activity {
 				}
 			}
 		});
+
+		Button btnGo = (Button) findViewById(R.id.btnGo);
+		btnGo.setEnabled(true);
+		btnGo.setOnClickListener(new View.OnClickListener(){
+			@Override
+			public void onClick(View v){
+				if (_bConnected) {
+					v.setEnabled(false);
+
+					sendData(0);
+					v.setEnabled(true);
+				}
+			}
+		});
+
+		Button btnBack = (Button) findViewById(R.id.btnBack);
+		btnBack.setEnabled(true);
+		btnBack.setOnClickListener(new View.OnClickListener(){
+			@Override
+			public void onClick(View v){
+				if (_bConnected) {
+					v.setEnabled(false);
+
+					sendData(1);
+					v.setEnabled(true);
+				}
+			}
+		});
+
+		Button btnLeft = (Button) findViewById(R.id.btnLeft);
+		btnLeft.setEnabled(true);
+		btnLeft.setOnClickListener(new View.OnClickListener(){
+			@Override
+			public void onClick(View v){
+				if (_bConnected) {
+					v.setEnabled(false);
+
+					sendData(2);
+					v.setEnabled(true);
+				}
+			}
+		});
+
+
+		Button btnRight = (Button) findViewById(R.id.btnRight);
+		btnRight.setEnabled(true);
+		btnRight.setOnClickListener(new View.OnClickListener(){
+			@Override
+			public void onClick(View v){
+				if (_bConnected) {
+					v.setEnabled(false);
+
+					sendData(3);
+					v.setEnabled(true);
+				}
+			}
+		});
+
 	}
 
 	//カメラへのPermissionの処理
@@ -274,6 +344,12 @@ public class MainActivity extends Activity {
 
 		// Set volume control stream type to WebRTC audio.
 		setVolumeControlStream(AudioManager.STREAM_VOICE_CALL);
+
+        //Microbridge
+        serverActive = true;
+        new Thread(this).start();
+        Toast.makeText(this, "Server thread start", Toast.LENGTH_SHORT).show();
+        Log.d(TAG, "Server thread started");
 	}
 
 	@Override
@@ -281,7 +357,79 @@ public class MainActivity extends Activity {
 		// Set default volume control stream type.
 		setVolumeControlStream(AudioManager.USE_DEFAULT_STREAM_TYPE);
 		super.onPause();
+
+        //Microbridge
+        serverActive = false;
+        try {
+            if (mSock != null) {
+                mSock.close();
+            }
+            mServerSocket.close();
+            Log.v("Microbridge", "Socket closed");
+        } catch (IOException e) {
+            Log.v("Microbridge", "IOException");
+        }
 	}
+
+	//Microbridge
+    public void run() {
+        String receivedStr;
+
+        Log.d(TAG, "Thread started...");
+        try {
+            mServerSocket = new ServerSocket();
+            mServerSocket.setReuseAddress(true);
+            mServerSocket.bind(new InetSocketAddress(portNumber));
+            Log.d(TAG, "Waiting to connect...");
+            mSock = mServerSocket.accept();
+
+            mHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    Toast.makeText(getApplicationContext(), "Connected", Toast.LENGTH_SHORT).show();
+                }
+            });
+
+            receivedData = new BufferedReader(new InputStreamReader(
+                    mSock.getInputStream()));
+            transmitData = new OutputStreamWriter(mSock.getOutputStream());
+
+            while (serverActive) {
+                if ((receivedStr = receivedData.readLine()) != null) {
+                    if(receivedStr.equals("ON")){
+                        mHandler.post(new Runnable() {
+                            @Override
+                            public void run() {
+
+                            }
+                        });
+                    } else {
+                        mHandler.post(new Runnable() {
+                            @Override
+                            public void run() {
+
+                            }
+                        });
+                    }
+                }
+            }
+            receivedData = null;
+            transmitData = null;
+            mSock.close();
+            mSock = null;
+
+            mServerSocket.close();
+            Log.v(TAG, "Socket closed");
+            mHandler.post(new Runnable() {
+                @Override
+                public void run() {
+
+                }
+            });
+        } catch (SocketException e) {
+        } catch (IOException e) {
+        }
+    }
 
 	@Override
 	protected void onStop()	{
@@ -321,7 +469,7 @@ public class MainActivity extends Activity {
 			public void onCallback(Object object) {
 				_bConnected = true;
 				updateActionButtonTitle();
-				appendLog("Data Connected.");
+				appendLog("Connected.");
 			}
 		});
 
@@ -340,62 +488,23 @@ public class MainActivity extends Activity {
 			public void onCallback(Object object) {
 				String strValue = null;
 
-				if (object instanceof String) {
-					strValue = (String) object;
-				} else if (object instanceof Double) {
-					Double doubleValue = (Double) object;
+                if (object instanceof String) {
+                    strValue = (String) object;
 
-					strValue = doubleValue.toString();
-				} else if (object instanceof ArrayList) {
-					ArrayList arrayValue = (ArrayList) object;
+                } else {
+                    strValue = "DataType: " + object.getClass().getSimpleName();
+                }
+                appendLog("Remote:"+ strValue);
 
-					StringBuilder sbResult = new StringBuilder();
-
-					for (Object item : arrayValue) {
-						sbResult.append(item.toString()+"\n");
-					}
-
-					strValue = sbResult.toString();
-				} else if (object instanceof Map) {
-					Map mapValue = (Map) object;
-
-					StringBuilder sbResult = new StringBuilder();
-
-					Object[] objKeys = mapValue.keySet().toArray();
-					for (Object objKey : objKeys) {
-						Object objValue = mapValue.get(objKey);
-
-						sbResult.append(objKey.toString());
-						sbResult.append(" = ");
-						sbResult.append(objValue.toString()+"\n");
-					}
-
-					strValue = sbResult.toString();
-				} else if (object instanceof byte[]) {
-					Bitmap bmp = null;
-					byte[] byteArray = (byte[])object;
-					if (byteArray != null) {
-						bmp = BitmapFactory.decodeByteArray(byteArray, 0, byteArray.length);
-					}
-
-					ImageView ivRcv = (ImageView)findViewById(R.id.ivRcv);
-					ivRcv.setImageBitmap(bmp);
-
-					strValue = "Received Image.(Type:byte[])";
-				} else if(object instanceof Long){
-					Log.d(TAG, "[On/DataConnection.DATA] Long");
-					Long longValue = (Long)object;
-					strValue = longValue.toString();
-				} else if (object instanceof JSONObject) {
-					JSONObject json = (JSONObject)object;
-					strValue = json.toString();
-				} else if (object instanceof JSONArray) {
-					JSONArray json = (JSONArray)object;
-					strValue = json.toString();
-				} else {
-					strValue = "DataType: " + object.getClass().getSimpleName();
-				}
-				appendLog("Remote:"+ strValue);
+                try {
+                    Log.v(TAG, "Output to Buffer");
+                    transmitData.write((String)object);
+                    transmitData.flush();
+                } catch (SocketException e) {
+                    Toast.makeText(getApplicationContext(),"SocketException",Toast.LENGTH_LONG).show();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
 			}
 		});
 
@@ -651,9 +760,9 @@ public class MainActivity extends Activity {
 				Button btnAction = (Button) findViewById(R.id.btnAction);
 				if (null != btnAction) {
 					if (false == _bConnected) {
-						btnAction.setText("Make Call");
+						btnAction.setText("Connect");
 					} else {
-						btnAction.setText("Hang up");
+						btnAction.setText("Disconnect");
 					}
 				}
 			}
@@ -670,70 +779,43 @@ public class MainActivity extends Activity {
 		Boolean bResult = false;
 		String strMsg = "";
 		switch(type){
-			case 0:{
-				String strData = "Hello WebRTC";
-				bResult = _dataConnection.send(strData);
-				strMsg = strData;
-				break;
-			}
-			case 1:{
-				Double dblData = 3.14;
-				bResult = _dataConnection.send(dblData);
-				strMsg = dblData.toString();
-				break;
-			}
-			case 2: {
-				ArrayList<String> arrData = new ArrayList<String>(){
-					{
-						add("1");
-						add("2");
-						add("3");
-					}
-				};
-				bResult = _dataConnection.send(arrData);
-				strMsg = arrData.toString();
-				break;
-			}
-			case 3:{
-				HashMap<String,String> mapData = new HashMap<String,String>(){
-					{
-						put("one","1");
-						put("two","2");
-					}
-				};
-				bResult = _dataConnection.send(mapData);
-				strMsg = mapData.toString();
-				break;
-			}
-			case 4:{
-				ByteArrayOutputStream bo = new ByteArrayOutputStream();
-				byte[] buffer = new byte[1024];
-				try {
-					BufferedInputStream is =new BufferedInputStream(getAssets().open("image.png"));
-					while(true){
-						int len = is.read(buffer);
-						if(len < 0){
-							break;
-						}
-						bo.write(buffer,0,len);
-					}
+            case 0:{
+                String strData = "48";
+                bResult = _dataConnection.send(strData);
+                strMsg = strData;
+                break;
+            }
 
-					byte[] btValue = bo.toByteArray();
-					ByteBuffer bbValue = ByteBuffer.wrap(btValue);
-					bResult = _dataConnection.send(bbValue);
-					strMsg = "Send Image";
-				}catch(IOException e){
-					e.printStackTrace();
-				}
-				break;
-			}
-			default:{
-				break;
-			}
+            case 1:{
+                String strData = "49";
+                bResult = _dataConnection.send(strData);
+                strMsg = strData;
+                break;
+            }
+
+            case 2:{
+                String strData = "50";
+                bResult = _dataConnection.send(strData);
+                strMsg = strData;
+                break;
+            }
+
+            case 3: {
+                String strData = "51";
+                bResult = _dataConnection.send(strData);
+                strMsg = strData;
+                break;
+            }
+
+
+            default:{
+                break;
+            }
 		}
 
 		if(bResult) {
-			appendLog("You:" + strMsg);
+
+            appendLog("You:" + strMsg);
 		}
 
 	}
